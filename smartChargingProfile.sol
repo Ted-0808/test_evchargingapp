@@ -1,6 +1,6 @@
 pragma solidity ^0.4.20;
 
-import "./CP_DB.sol" ;
+import "./first.sol" ;
 
 
 contract smartCharging is chargingPointInfo{
@@ -11,15 +11,16 @@ contract smartCharging is chargingPointInfo{
     uint chargingTime;
     uint numOfCP;
     address contractOwner;
+    uint test;
     //status of CP
     
-    mapping (address => uint) ChargingPower;
+    // mapping (address => uint) ChargingPower; on the other contract
     
     // assign the total registered CPs from the other contract to numOfCP
-    constructor () public {
+    constructor ()  public {
         powerLimit = 50;
         numOfCP = totalCP;
-        powerDemand = 0;
+        powerDemand = 10;
         contractOwner = msg.sender;
        
     }
@@ -39,30 +40,48 @@ contract smartCharging is chargingPointInfo{
         powerLimit = _powerLimit;
     }
     
+    //to calculate current total load from all CPs
+    function totalLoad () public {
+        for (uint i=1;i<CP_list.length;i++ ){
+            powerDemand += ChargingPower[CP_list[i]];
+            
+        }
+    }
+    
     //EV user can submit charging request
-    function userInput(address cpAddress, uint _energyDemand, uint _chargingTime) public payable checkBalance returns (bool decision){
+    function userInput(address cpAddress, uint _energyDemand, uint _chargingTime) public payable returns (bool decision){
         uint avgDemand;
         avgDemand = _energyDemand/_chargingTime;
         chargingTime = _chargingTime;
-        
         if (avgDemand> (powerLimit-powerDemand)){
             return false;
         }
         else {
-            powerDemand += avgDemand;
             ChargingPoints[cpAddress].chargingStatus = 1;
             ChargingPower[cpAddress] = avgDemand;
+            powerDemand =0;
+            totalLoad();
             return true;
         }
+        
+    }
+
+    function getData ()  public view returns(uint){
+
+        return powerDemand;
     }
     
-    function getData () view returns(uint){
-        return powerDemand;
+    function getCPList () public view returns (address[]){
+        return CP_list;
     }
 
     function endCharging (address _cpAddress) public {
         
-        powerDemand -= ChargingPower[_cpAddress];
+        ChargingPower[_cpAddress] = 0;
         ChargingPoints[_cpAddress].chargingStatus = 0;
+    }
+    
+    function getSpecificCHargingPower (address _cpAddress) public view returns (uint){
+        return ChargingPower[_cpAddress];
     }
 }
