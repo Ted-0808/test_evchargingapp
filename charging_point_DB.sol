@@ -12,17 +12,19 @@ contract chargingPointInfo {
         uint32 maxPowerSupply;
         uint32 latitude;
         uint32 longitude;
-        status chargingStatus;
+        uint8 chargingStatus; //0 for available and 1 for occupied
         uint32 price;
 
     }
 
-    event chargingPointRegs (address CPaddr, string operator, string connectionType, supplyMode chargingType, uint32 maxPowerSupply, uint32 latitude, uint32 longitude, status chargingStatus, uint32 price);
+    event chargingPointRegs (address CPaddr, string operator, string connectionType, supplyMode chargingType, uint32 maxPowerSupply, uint32 latitude, uint32 longitude, uint8 chargingStatus, uint32 price);
 
     mapping (address => ChargingPoint) ChargingPoints;
     mapping (address => uint) cpIndexArr;
+    mapping (address => uint) ChargingPower;
 
     address[] public CP_list;
+    uint public totalCP;
 
     constructor  () public {
         // position 0 occupied by invalid address
@@ -32,14 +34,17 @@ contract chargingPointInfo {
 
     //registration
 
-    function setChargingPoint (string memory _operator, string memory _connectionType, supplyMode _chargingType, uint32 _maxPowerSupply, uint32 _latitude, uint32 _longitude, status _chargingStatus, uint32 _price) public {
+    function setChargingPoint (string memory _operator, string memory _connectionType, supplyMode _chargingType, uint32 _maxPowerSupply, uint32 _latitude, uint32 _longitude, uint8 _chargingStatus, uint32 _price) public {
         if (!cpAddrArr(msg.sender)){
         // mapping address to index
         cpIndexArr[msg.sender]= CP_list.length;
+        ChargingPower[msg.sender]=0;
         ChargingPoints[msg.sender]= ChargingPoint(_operator, _connectionType, _chargingType, _maxPowerSupply, _latitude, _longitude, _chargingStatus, _price);
         CP_list.push(msg.sender);
         emit chargingPointRegs(msg.sender,_operator, _connectionType, _chargingType, _maxPowerSupply,_latitude,_longitude, _chargingStatus, _price);
         }
+        
+        totalCP = CP_list.length -1;
     }
 
     //check if an address is already registered or not
@@ -53,11 +58,11 @@ contract chargingPointInfo {
     }
 
     //get registration details
-    function getChargingPointDetails () public constant returns (address, string, string, supplyMode, uint32, uint32, uint32, status, uint32){
+    function getChargingPointDetails () public constant returns (address, string, string, supplyMode, uint32, uint32, uint32, uint8, uint32){
         return (msg.sender, ChargingPoints[msg.sender].operator, ChargingPoints[msg.sender].connectionType, ChargingPoints[msg.sender].chargingType, ChargingPoints[msg.sender].maxPowerSupply, ChargingPoints[msg.sender].latitude, ChargingPoints[msg.sender].longitude, ChargingPoints[msg.sender].chargingStatus, ChargingPoints[msg.sender].price);
     }
 
-    function getSpecificCPDetails (address _cpaddr) public constant returns ( string, supplyMode, uint32, uint32, uint32, status, uint32){
+    function getSpecificCPDetails (address _cpaddr) public constant returns ( string, supplyMode, uint32, uint32, uint32, uint8, uint32){
         return ( ChargingPoints[_cpaddr].connectionType, ChargingPoints[_cpaddr].chargingType, ChargingPoints[_cpaddr].maxPowerSupply, ChargingPoints[_cpaddr].latitude, ChargingPoints[_cpaddr].longitude, ChargingPoints[_cpaddr].chargingStatus, ChargingPoints[_cpaddr].price);
     }
 }
