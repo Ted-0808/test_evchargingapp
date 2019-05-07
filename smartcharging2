@@ -1,0 +1,164 @@
+pragma solidity ^0.4.20;
+
+import "./first.sol" ;
+
+
+contract smartCharging is chargingPointInfo{
+    
+    string public message;
+    uint powerLimit;
+    uint powerDemand;
+    uint numOfCP;
+    address contractOwner;
+    uint threshold =5;
+    //status of CP
+    
+    // mapping (address => uint) ChargingPower; on the other contract
+    //mapping flexibility margin with each CP
+    mapping (address => CPflexiblity) ReducablePower;
+    
+    struct CPflexiblity {
+        uint reducablePower;
+        uint minPower;
+        bool availability;
+    }
+    
+    // assign the total registered CPs from the other contract to numOfCP
+    constructor ()  public {
+        powerLimit = 50;
+        numOfCP = totalCP;
+        powerDemand = 0;
+        contractOwner = msg.sender;
+       
+    }
+    
+    modifier onlyAggragator () {
+        require (msg.sender == contractOwner);
+        _;
+    }
+    
+    //this may not be used
+    // modifier checkBalance (){
+    //     require (msg.value >= 0.01 ether);
+    //     _;
+    // }
+    
+    
+    //set by DSO
+    function setPowerLimit (uint _powerLimit) public onlyAggragator {
+        powerLimit = _powerLimit;
+    }
+    
+    //to calculate current total load from all CPs
+    function totalLoad () public {
+        powerDemand =0;
+        for (uint i=1;i<CP_list.length;i++ ){
+            powerDemand += ChargingPower[CP_list[i]];
+            
+        }
+    }
+    
+    //EV user can submit charging request
+    function userInput(address cpAddress, uint _energyDemand, uint _chargingTime) public payable returns (bool decision){
+        //avgDemand is the lower boundary of charging power
+        uint avgDemand;
+        //flexMargin is the controllable power of current CP
+        uint flexMargin;
+        //the power needed to be reduced through flexibility control
+        uint powerToBalance;
+        
+        uint chargingTime;
+        
+        avgDemand = _energyDemand/_chargingTime;
+        ReducablePower[cpAddress].minPower = avgDemand;
+        flexMargin = ChargingPoints[cpAddress].maxPowerSupply - avgDemand;
+        ReducablePower[cpAddress].reducablePower = flexMargin;
+        chargingTime = _chargingTime;
+        
+        //when a CP is not in service or occupied by others
+        if (ChargingPoints[cpAddress].chargingStatus==1){
+            revert();
+            return false;
+        }
+        //accept charging without flexibility control
+        else if (ChargingPoints[cpAddress].maxPowerSupply <= (powerLimit - powerDemand)){
+            ChargingPoints[cpAddress].chargingStatus = 1;
+            ChargingPower[cpAddress] = ChargingPoints[cpAddress].maxPowerSupply;
+            totalLoad();
+            return true;
+        }
+        //flexibility comes in 
+        else {
+            powerToBalance = ChargingPoints[cpAddress].maxPowerSupply + powerDemand - powerLimit;
+            flexibilityOn(powerToBalance);
+            ChargingPoints[cpAddress].chargingStatus = 1;
+            ChargingPower[cpAddress] = ChargingPoints[cpAddress].maxPowerSupply;
+            
+        }
+        
+    }
+    
+    
+    function flexibilityOn (uint _powerToBalance) public returns (bool){
+        uint aggFlexMargin =0;
+        while (aggFlexMargin <_powerToBalance){
+            uint i=1;
+            if (ReducablePower[CP_list[i]].availability == true){
+                aggFlexMargin +=ReducablePower[CP_list[i]].reducablePower;
+                ReducablePower[CP_list[i]].availability = false;
+                ChargingPower[CP_list[i]]= ReducablePower[CP_list[i]].minPower; //reduce the power of CP
+            }
+            i+=1;
+            //if all flexibility has performed but not able to cover the extra demand, then revert all process
+            if(i>CP_list.length){
+                revert();
+                return false;
+            }
+                
+        }
+        //if it works, then accept charging event
+        return true;
+    }
+    
+    function flexibilityOff (uint _powerToBalance) public returns (bool){
+        uint aggFlexMargin2 =0;
+        while (aggFlexMargin2 <_powerToBalance){
+            uint i=1;
+            if (ReducablePower[CP_list[i]].availability == false){
+                aggFlexMargin2 +=ReducablePower[CP_list[i]].reducablePower;
+                ReducablePower[CP_list[i]].availability = true;
+                ChargingPower[CP_list[i]]=ChargingPoints[CP_list[i]].maxPowerSupply;//increase the power of CP to normal state
+            }
+            i+=1;
+            if (i>CP_list.length){
+                return true;
+            }
+        }
+        //all CP supply the norminal power
+        
+    }
+    
+
+    function getData ()  public view returns(uint){
+        return powerDemand;
+    }
+    
+    function getCPList () public view returns (address[]){
+        return CP_list;
+    }
+
+//this function should be induced automatically when charging time is up, but now we do it manually
+    function endCharging (address _cpAddress) public {
+        ChargingPower[_cpAddress] = 0;
+        ChargingPoints[_cpAddress].chargingStatus = 0;
+        totalLoad();
+        uint avaPower = powerLimit - powerDemand;
+        if (avaPower > threshold){
+            flexibilityOff(avaPower);
+        }
+    }
+    
+    function getSpecificCHargingPower (address _cpAddress) public view returns (uint){
+        return ChargingPower[_cpAddress];
+    }
+}
