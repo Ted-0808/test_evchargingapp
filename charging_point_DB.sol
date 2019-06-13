@@ -1,5 +1,6 @@
 pragma solidity ^0.4.20;
 
+//this contract can be treated as the aggregator of local EV charging system, all charging points in this system share the same constraints either geographically or virtually.
 contract chargingPointInfo {
 
     enum supplyMode {AC,DC}
@@ -21,7 +22,6 @@ contract chargingPointInfo {
 
     mapping (address => ChargingPoint) ChargingPoints;
     mapping (address => uint) cpIndexArr;
-    mapping (address => uint) ChargingPower;
 
     address[] public CP_list;
     uint public totalCP;
@@ -38,7 +38,6 @@ contract chargingPointInfo {
         if (!cpAddrArr(msg.sender)){
         // mapping address to index
         cpIndexArr[msg.sender]= CP_list.length;
-        ChargingPower[msg.sender]=0;
         ChargingPoints[msg.sender]= ChargingPoint(_operator, _connectionType, _chargingType, _maxPowerSupply, _latitude, _longitude, _chargingStatus, _price);
         CP_list.push(msg.sender);
         emit chargingPointRegs(msg.sender,_operator, _connectionType, _chargingType, _maxPowerSupply,_latitude,_longitude, _chargingStatus, _price);
@@ -64,5 +63,9 @@ contract chargingPointInfo {
 
     function getSpecificCPDetails (address _cpaddr) public constant returns ( string, supplyMode, uint32, uint32, uint32, uint8, uint32){
         return ( ChargingPoints[_cpaddr].connectionType, ChargingPoints[_cpaddr].chargingType, ChargingPoints[_cpaddr].maxPowerSupply, ChargingPoints[_cpaddr].latitude, ChargingPoints[_cpaddr].longitude, ChargingPoints[_cpaddr].chargingStatus, ChargingPoints[_cpaddr].price);
+    }
+    
+    function getChargingList () public view returns (address[]){
+        return CP_list;
     }
 }
