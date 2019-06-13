@@ -1,0 +1,61 @@
+pragma solidity ^0.4.23;
+
+import "./CP_DB.sol" ;
+
+
+contract newSmartCharging is chargingPointInfo{
+    
+    uint8 energyNeeded;
+    uint8 chargingTime;
+    uint8 powerLimit;
+    address CPid;
+    address UserId;
+    address contractOwner;
+    mapping (address => uint8) ChargingPower;
+    mapping (address => uint8) TotalFlexibility;
+    mapping (address => uint8) flexibilityRecord;
+    
+    constructor() public {
+        contractOwner = msg.sender;
+    }
+    //modifier
+    modifier onlyDSO () {
+        require (msg.sender == contractOwner);
+        _;
+    } 
+    
+    //set by DSO
+    function setPowerLimit (uint8 _powerLimit) public onlyDSO {
+        powerLimit = _powerLimit;
+    }
+    function getPowerLimit () public view returns (uint8){
+        return powerLimit;
+    }
+    
+    //EV user can submit charging request
+    function userInput(address cpAddress, uint8 _energyDemand, uint8 _chargingTime) public payable {
+        
+        energyNeeded = _energyDemand;
+        chargingTime = _chargingTime;
+        CPid = cpAddress;
+        UserId = msg.sender;
+        ChargingPoints[CPid].chargingStatus =1; //seize the charging point
+
+    }    
+    
+    function chargingUpdate ( address userId, uint8 flexbility) public {
+//        ChargingPower[cpAddress] = power; //update the charging power
+        TotalFlexibility[userId] = flexbility; //update the flexibility
+    }
+    
+    function getFlex (address userId) public view returns (uint8){
+        return TotalFlexibility[userId];
+    }
+    
+    function chargingFinish (address cpAddress, address userId) public {
+        ChargingPoints[cpAddress].chargingStatus =0; //release the charging point
+        ChargingPower[cpAddress] = 0;  //set charging power to zero, stop the charging process
+        flexibilityRecord[userId] += TotalFlexibility[userId]; // accumulate flexibility to user account
+        TotalFlexibility[userId] = 0; //clear the flexibility for charging process
+    }
+}
