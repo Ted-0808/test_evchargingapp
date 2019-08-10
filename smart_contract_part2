@@ -1,0 +1,91 @@
+pragma solidity ^0.4.23;
+
+import "./CP_DB.sol" ;
+
+
+contract newSmartCharging is chargingPointInfo{
+    
+    struct ChargingEvent {
+    address userAddr;
+    uint8 energyDemand;
+    uint16 chargingTime;
+    uint8 flexibilityRec;
+    }
+
+    uint8 powerLimit;
+    address contractOwner;
+    mapping (address => uint8) ChargingPower;
+    mapping (address => uint8) TotalFlexibility;
+    mapping (address => uint8) flexibilityRecord;
+    mapping (address => ChargingEvent) chargingEvents;
+    
+    constructor() public {
+        contractOwner = msg.sender;
+    }
+    //modifier
+    modifier onlyOwner () {
+        require (msg.sender == contractOwner);
+        _;
+    } 
+    
+    modifier onlyCPs () {
+        require (cpIndexArr[msg.sender]>0);
+        _;
+    }
+    
+    modifier onlyAuthor (){
+        require (msg.sender == contractOwner); //can be other address representing off-chain smart charging algorithm
+        _;
+    }
+    event gridLimit (uint8 _powerLimit);
+    event newCharging (address indexed _userAddr, address _cpAddr, uint8 _chargingEnergy, uint16 _chargingTime);
+    event electricityCharged (address indexed _cpAddr, uint8 amount);
+    event powerUpdate (address indexed _cpAddr, uint8 amount);
+    event endCharging (address _cpAddr, address _userAddr);
+
+    //power limit set by contract owner (DSO or aggregator)
+    function setPowerLimit (uint8 _powerLimit) public onlyOwner {
+        powerLimit = _powerLimit;
+        emit gridLimit(_powerLimit);
+    }
+    
+    //EV user can submit charging request (only when the charging request is accepted), energy in kWh and time in minutes, send by user or off-chain algorithm?
+    function userInput(address cpAddress, uint8 _energyDemand, uint16 _chargingTime) public payable {
+        ChargingPoints[cpAddress].chargingStatus = false; //seize the charging point
+        chargingEvents[cpAddress].userAddr =  msg.sender;
+        chargingEvents[cpAddress].energyDemand = _energyDemand;
+        chargingEvents[cpAddress].chargingTime = _chargingTime;
+        TotalFlexibility[msg.sender] = 0; // amount of flexibility utilized
+        emit newCharging (msg.sender, cpAddress, _energyDemand, _chargingTime);
+    }    
+    
+    //every time step (15 minutes) sent from CP 
+    function chargingUpdate ( address userId, uint8 chargingEnergy) public onlyCPs payable{
+        chargingEvents[msg.sender].energyDemand -= chargingEnergy;
+        chargingEvents[msg.sender].chargingTime  -= 15;
+        TotalFlexibility[userId] += (ChargingPoints[msg.sender].maxPowerSupply/4 -chargingEnergy);
+        emit electricityCharged(msg.sender, chargingEnergy);  // for updating user interface
+    }
+    
+    // sind control signal to EVSE
+    function powerControl (address _cpAddr, uint8 _chargingPower) public onlyAuthor {
+        ChargingPower[_cpAddr] = _chargingPower;
+        emit powerUpdate (_cpAddr, _chargingPower);
+    }
+    
+    function chargingFinish (address cpAddress, address userId) public {
+        ChargingPoints[cpAddress].chargingStatus = true; //release the charging point
+        ChargingPower[cpAddress] = 0;  //set charging power to zero, stop the charging process
+        flexibilityRecord[userId] += TotalFlexibility[userId]; // accumulate flexibility to user account
+        TotalFlexibility[userId] = 0; //clear after charging process
+        emit endCharging (cpAddress, userId);
+    }
+    
+        function getPowerLimit () public view returns (uint8){
+        return powerLimit;
+    }
+    
+        function getChargingEvent (address _cpAddr,address userId) public view returns (uint8, uint16, uint8){
+        return (chargingEvents[_cpAddr].energyDemand,chargingEvents[_cpAddr].chargingTime,TotalFlexibility[userId]);
+    }
+}
