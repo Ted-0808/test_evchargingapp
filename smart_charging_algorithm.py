@@ -1,3 +1,4 @@
+#this is a comment
 import random
 from copy import deepcopy
 
@@ -48,7 +49,7 @@ total_electricity = 0
 for item in range( 0, SIM_TIME, TIME_STEP):
     print("simulation at %d mins" % item)
     num_charging = 0
-    
+
 #    print(len(charging_list_n))
     i = 0
     while i < len(charging_list_n):
@@ -68,13 +69,13 @@ for item in range( 0, SIM_TIME, TIME_STEP):
             num_charging +=1
 
         i +=1
-    
+
     n = n + 1
-    
+
     if (n< len(charging_Request)):
         new_charging_event_n = {"id":charging_Request[n][0],"E":charging_Request[n][1], "T":charging_Request[n][3], "F_t": flexibility_to_offer[n][0],"F_p":flexibility_to_offer[n][1],"flex_rec":0,"Y/N": 1,"End":0}
         print ("New charging event arrives")
-        
+
         if num_charging < (Power_Supply/ Norminal_Power_CP):
             print ("New charging event accept EV %d"% charging_Request[n][0])
             charging_list_n.append(new_charging_event_n)
@@ -90,13 +91,13 @@ for item in range( 0, SIM_TIME, TIME_STEP):
 
 # smart charging case
 # the time resolution is in minute
-            
+
 simutaneity = 0
 n = 0
 
 for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every timestep (real loop)###
     print ("simulation time is %d minutes" %T)
-    
+
     ongoing_charging = len(charging_list)
     no_flex_offer = 0
     power_supply = 33 # initial value for every loop
@@ -109,8 +110,8 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
     if simutaneity >= len(charging_list):
         pass
     else:
-        simutaneity = len(charging_list)    
-    
+        simutaneity = len(charging_list)
+
     item = 0
     while (item <len(charging_list)):
         if charging_list[item]["T"] == 0 or charging_list[item]["E"] <= 0:
@@ -119,21 +120,21 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
             charging_list.pop(item)
             item-=1
         item +=1
-    
 
-    
-    
+
+
+
     for i in range(len(charging_list)):
         charging_list[i]["F_t"] = charging_list[i]["T"] - (charging_list[i]["E"]/Norminal_Power_CP*60)
         if charging_list[i]["F_t"]>= 15:
             charging_list[i]["F_p"] = Norminal_Power_CP
         else:
             charging_list[i]["F_p"] = charging_list[i]["F_t"]*Norminal_Power_CP/15
-        
+
     for i in range(len(charging_list)):
 
         if charging_list[i]["T"] ==15:     #although for such case thses is no flecxibility, but we already deduct the needed power from the total supplyb
-            required_charging_power = 4*charging_list[i]["E"]            
+            required_charging_power = 4*charging_list[i]["E"]
             charging_list[i]["Y/N"] = 10  # 10 means last step case
             power_supply -= required_charging_power
 
@@ -145,16 +146,16 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
             flex_offer += 1
         else:
             flex_offer += 1
-            
+
     flex_demand = (no_flex_offer + flex_offer)*Norminal_Power_CP - power_supply
     group1_sum = flex_group1 * Norminal_Power_CP
-    
+
     for i in range(len(charging_list)):
         if charging_list[i]["Y/N"] ==1:
             flex_supply += charging_list[i]["F_p"]
         else:
-            continue;            
-             ##all charging events are processed & get updated     
+            continue;
+             ##all charging events are processed & get updated
     if flex_demand < 0:
 
         for i in range(len(charging_list)):
@@ -162,7 +163,7 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
             if charging_list[i]["T"] ==0:
                 charging_list[i]["E"] =0
             else:
-                charging_list[i]["E"] -= (0.25)*Norminal_Power_CP  
+                charging_list[i]["E"] -= (0.25)*Norminal_Power_CP
 
     elif flex_demand <= group1_sum:
 #            print ("charging accepted! ")
@@ -174,26 +175,26 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
             elif charging_list[i]["F_p"] != Norminal_Power_CP:    #group2 & no flexibility charging
                 charging_list[i]["E"] -= (0.25)*Norminal_Power_CP
             else:                            #group1 charging
-                charging_list[i]["E"] -= (1 - flex_demand / group1_sum) * Norminal_Power_CP *(0.25) 
+                charging_list[i]["E"] -= (1 - flex_demand / group1_sum) * Norminal_Power_CP *(0.25)
                 charging_list[i]["flex_rec"] += flex_demand / group1_sum * Norminal_Power_CP *(0.25) # flex allocation
-        
-    else:  # flexibility_demand <= flexibility_supply:   
+
+    else:  # flexibility_demand <= flexibility_supply:
          for i in range (len(charging_list)):
             charging_list[i]["T"] -= 15
             if charging_list[i]["T"] == 0:   #last step charging
                 charging_list[i]["E"] = 0
-            elif charging_list[i]["F_p"] == Norminal_Power_CP:   # group1 & 
+            elif charging_list[i]["F_p"] == Norminal_Power_CP:   # group1 &
                 charging_list[i]["flex_rec"] += Norminal_Power_CP   # flex allocation
                 continue  #no energy reduction
             elif charging_list[i]["Y/N"] ==0:     #charging events with no flexibility
                 charging_list[i]["E"] -= (0.25)*Norminal_Power_CP
             else:                                #group2 charging
-                charging_list[i]["E"] -= (0.25)*(Norminal_Power_CP - ((flex_demand - group1_sum)/(flex_supply - group1_sum) * charging_list[i]["F_p"]))        
+                charging_list[i]["E"] -= (0.25)*(Norminal_Power_CP - ((flex_demand - group1_sum)/(flex_supply - group1_sum) * charging_list[i]["F_p"]))
                 charging_list[i]["flex_rec"] +=((flex_demand - group1_sum)/(flex_supply - group1_sum) * charging_list[i]["F_p"])* 0.25
-        
-        
-        
-# step 1: add one more charging request, and evaluate if it can be accepted       
+
+
+
+# step 1: add one more charging request, and evaluate if it can be accepted
 #if (Power_Supply_Max - current_power) >= Norminal_Power_CP:
     charging_Pool= deepcopy(charging_list)
 
@@ -221,13 +222,13 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
 
             i = 0
             while (i<len(charging_Pool)):
-                
+
                 if charging_Pool[i]["T"] == 0 or charging_Pool[i]["E"] <= 0:
                     charging_Pool[i]["End"] =1
                     charging_Pool.pop(i)
                     print("simulation: Charging finished")
                 i+=1
-                
+
             # update all flexibility offer of charging pool
             for i in range(len(charging_Pool)):
                 charging_Pool[i]["F_t"] = charging_Pool[i]["T"] - (charging_Pool[i]["E"]/Norminal_Power_CP*60)
@@ -235,13 +236,13 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
                     charging_Pool[i]["F_p"] = Norminal_Power_CP
                 else:
                     charging_Pool[i]["F_p"] = charging_Pool[i]["F_t"]*Norminal_Power_CP/15
-            
-    
+
+
             for i in range(len(charging_Pool)):
-    
+
                 if charging_Pool[i]["T"] ==15:
                     required_charging_power = 4*charging_Pool[i]["E"]
-                    
+
                     charging_Pool[i]["Y/N"] = 10
                     power_supply_s -= required_charging_power
                     count_last_step +=1
@@ -254,23 +255,23 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
                 else:
     #                active_charging_events.append(charging_Pool[i])
                     flexibility_charging += 1
-                    
+
             # step 3: calculate flexibility demand, if less than 0, accept the new charging request; if larger than 0, follow step 4 and onwards.
             flexibility_demand = (no_flexibility + flexibility_charging)*Norminal_Power_CP - power_supply_s
             first_sum = num_group1 * Norminal_Power_CP
-            
+
             for i in range(len(charging_Pool)):
                     if charging_Pool[i]["Y/N"] ==1:
                         flexibility_supply += charging_Pool[i]["F_p"]
                     else:
                         continue;
-                        
+
             if flexibility_demand < 0:
-                charging_list.append(new_charging_event) 
+                charging_list.append(new_charging_event)
                 num_acc +=1
                 print ("simulation: charging accepted! ")
                 break
-    
+
             elif flexibility_demand <= first_sum:
     #            print ("charging accepted! ")
                 ##all charging event get updated
@@ -282,8 +283,8 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
                         charging_Pool[i]["E"] -= (0.25)*Norminal_Power_CP
                     else:                            #group1 charging
                         charging_Pool[i]["E"] -= (1 - flexibility_demand / first_sum) * Norminal_Power_CP *(0.25)
-                
-            elif flexibility_demand <= flexibility_supply:   
+
+            elif flexibility_demand <= flexibility_supply:
                  for i in range (len(charging_Pool)):
                     charging_Pool[i]["T"] -= 15
                     if charging_Pool[i]["F_p"] == Norminal_Power_CP or charging_Pool[i]["T"] == 0:  # group1 & last step charging
@@ -296,9 +297,9 @@ for T in range(0,SIM_TIME, TIME_STEP):       ###this is where loop for every tim
                 print("simulation: charging rejected")
                 charging_Pool.pop()
                 num_rej +=1
-                break    
-            
-            
+                break
+
+
 ## comparison and conclusion
 print("Simulation for %d hours " % (SIM_TIME/60), "with power limit at %d kW, " % Power_Supply )
 for i in charging_finished:
@@ -306,17 +307,17 @@ for i in charging_finished:
         if i == charging_Request[j][0]:
             total_electricity += charging_Request[j][1]
 print("with normal charging:")
-print("total electricity: ",total_electricity) 
-print("accepted request: ", num_acc_n, "rejected request: ", num_rej_n)               
-            
-            
-total_electricity =0         
+print("total electricity: ",total_electricity)
+print("accepted request: ", num_acc_n, "rejected request: ", num_rej_n)
+
+
+total_electricity =0
 total_flexibility =0
-            
+
 for i in range(len(flexibility_record)):
-    total_electricity += flexibility_record[i][1]             
+    total_electricity += flexibility_record[i][1]
     total_flexibility += flexibility_record[i][2]
 print("With smart charging:")
-print("total eletricity:", total_electricity, "   total flexibility: ", total_flexibility)                
-print("accepted request: ", num_acc, "rejected request: ", num_rej) 
-print("maximum charing events at the same time: ",simutaneity)       
+print("total eletricity:", total_electricity, "   total flexibility: ", total_flexibility)
+print("accepted request: ", num_acc, "rejected request: ", num_rej)
+print("maximum charing events at the same time: ",simutaneity)
