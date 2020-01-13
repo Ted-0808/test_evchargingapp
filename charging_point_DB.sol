@@ -23,7 +23,7 @@ contract chargingPointInfo {
 
     }
 
-    event chargingPointRegs (address CPaddr, string operator, string connectionType, supplyMode chargingType, uint8 maxPowerSupply, uint8 latitude, uint8 longitude, uint8 chargingStatus, uint8 price);
+    event chargingPointRegs (address CPaddr, string operator, string connectionType, supplyMode chargingType, uint8 maxPowerSupply, uint8 minsPower, uint8 latitude, uint8 longitude, uint8 chargingStatus, uint8 price);
 
     mapping (address => ChargingPoint) ChargingPoints;
     mapping (address => uint) cpIndexArr;
@@ -39,7 +39,7 @@ contract chargingPointInfo {
 
     //registration
 
-    function setChargingPoint (string memory _operator, string memory _connectionType, supplyMode _chargingType, uint32 _maxPowerSupply, uint32 _latitude, uint32 _longitude, uint8 _chargingStatus, uint32 _price) public {
+    function setChargingPoint (string memory _operator, string memory _connectionType, supplyMode _chargingType, uint8 _maxPowerSupply, uint8 _insPower, uint8 _latitude, uint8 _longitude, uint8 _chargingStatus, uint8 _price) public {
         if (!cpAddrArr(msg.sender)){
         // mapping address to index
         cpIndexArr[msg.sender]= CP_list.length;
