@@ -12,18 +12,18 @@ contract chargingPointInfo {
 
     struct ChargingPoint {
         string operator;
-        string connectionType;
+        string connectionType; // Type2, CCS, etc
         supplyMode chargingType;
-        uint32 maxPowerSupply;
-        uint8 insPower; //real-time power supply to the EV
-        uint32 latitude;
-        uint32 longitude;
-        uint8 chargingStatus; //0 for available and 1 for occupied
-        uint32 price;
+        uint8 maxPowerSupply; //rated power of the CP
+        uint8 insPower; //real-time power supply to the EV, default =0
+        uint8 latitude;
+        uint8 longitude;
+        uint8 chargingStatus; //0 for available and 1 for occupied, 2 for maintenance, etc
+        uint8 price;
 
     }
 
-    event chargingPointRegs (address CPaddr, string operator, string connectionType, supplyMode chargingType, uint32 maxPowerSupply, uint32 latitude, uint32 longitude, uint8 chargingStatus, uint32 price);
+    event chargingPointRegs (address CPaddr, string operator, string connectionType, supplyMode chargingType, uint8 maxPowerSupply, uint8 latitude, uint8 longitude, uint8 chargingStatus, uint8 price);
 
     mapping (address => ChargingPoint) ChargingPoints;
     mapping (address => uint) cpIndexArr;
@@ -43,9 +43,9 @@ contract chargingPointInfo {
         if (!cpAddrArr(msg.sender)){
         // mapping address to index
         cpIndexArr[msg.sender]= CP_list.length;
-        ChargingPoints[msg.sender]= ChargingPoint(_operator, _connectionType, _chargingType, _maxPowerSupply, _latitude, _longitude, _chargingStatus, _price);
+        ChargingPoints[msg.sender]= ChargingPoint(_operator, _connectionType, _chargingType, _maxPowerSupply, _insPower, _latitude, _longitude, _chargingStatus, _price);
         CP_list.push(msg.sender);
-        emit chargingPointRegs(msg.sender,_operator, _connectionType, _chargingType, _maxPowerSupply,_latitude,_longitude, _chargingStatus, _price);
+        emit chargingPointRegs(msg.sender,_operator, _connectionType, _chargingType, _maxPowerSupply, _insPower,_latitude,_longitude, _chargingStatus, _price);
         }
         
         totalCP = CP_list.length -1;
@@ -62,12 +62,12 @@ contract chargingPointInfo {
     }
 
     //get registration details
-    function getChargingPointDetails () public constant returns (address, string, string, supplyMode, uint32, uint32, uint32, uint8, uint32){
-        return (msg.sender, ChargingPoints[msg.sender].operator, ChargingPoints[msg.sender].connectionType, ChargingPoints[msg.sender].chargingType, ChargingPoints[msg.sender].maxPowerSupply, ChargingPoints[msg.sender].latitude, ChargingPoints[msg.sender].longitude, ChargingPoints[msg.sender].chargingStatus, ChargingPoints[msg.sender].price);
+    function getChargingPointDetails () public constant returns (address, string, string, supplyMode, uint8, uint8, uint8, uint8, uint8, uint8){
+        return (msg.sender, ChargingPoints[msg.sender].operator, ChargingPoints[msg.sender].connectionType, ChargingPoints[msg.sender].chargingType, ChargingPoints[msg.sender].maxPowerSupply, ChargingPoints[msg.sender].insPower, ChargingPoints[msg.sender].latitude, ChargingPoints[msg.sender].longitude, ChargingPoints[msg.sender].chargingStatus, ChargingPoints[msg.sender].price);
     }
 
-    function getSpecificCPDetails (address _cpaddr) public constant returns ( string, supplyMode, uint32, uint32, uint32, uint8, uint32){
-        return ( ChargingPoints[_cpaddr].connectionType, ChargingPoints[_cpaddr].chargingType, ChargingPoints[_cpaddr].maxPowerSupply, ChargingPoints[_cpaddr].latitude, ChargingPoints[_cpaddr].longitude, ChargingPoints[_cpaddr].chargingStatus, ChargingPoints[_cpaddr].price);
+    function getSpecificCPDetails (address _cpaddr) public constant returns ( string, string, supplyMode, uint8, uint8, uint8, uint8, uint8, uint8){
+        return ( ChargingPoints[_cpaddr].operator, ChargingPoints[_cpaddr].connectionType, ChargingPoints[_cpaddr].chargingType, ChargingPoints[_cpaddr].maxPowerSupply, ChargingPoints[_cpaddr].insPower, ChargingPoints[_cpaddr].latitude, ChargingPoints[_cpaddr].longitude, ChargingPoints[_cpaddr].chargingStatus, ChargingPoints[_cpaddr].price);
     }
     
     function getChargingList () public view returns (address[]){
