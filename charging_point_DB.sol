@@ -1,6 +1,10 @@
 pragma solidity ^0.4.20;
 
 //this contract can be treated as the aggregator of local EV charging system, all charging points in this system share the same constraints either geographically or virtually.
+but also can be further divided into several subgroups because of the existance of multiple feeders or extra source of power (PV invertor Battey storages, etc.). But as we indicated 
+blockchain is only for data record purpose and all other calculation works are performed off-chain.
+
+
 contract chargingPointInfo {
 
     enum supplyMode {AC,DC}
@@ -11,6 +15,7 @@ contract chargingPointInfo {
         string connectionType;
         supplyMode chargingType;
         uint32 maxPowerSupply;
+        uint8 insPower; //real-time power supply to the EV
         uint32 latitude;
         uint32 longitude;
         uint8 chargingStatus; //0 for available and 1 for occupied
